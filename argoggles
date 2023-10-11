@@ -109,7 +109,7 @@ def main():
         img = detector.findHands(img)
         lmList, bbox = detector.findPosition(img)
         if len(lmList) != 0:
-            print(lmList[4])
+            print(lmList[8])
 
         cTime = time.time()
         fps = 1 / (cTime - pTime)
@@ -158,7 +158,7 @@ def main():
         
             new_image_2 = cv2.putText(
                 img = img,
-                text = "1.) OPTION ONE",
+                text = "1.) BALOON GAME",
                 org = (40, 150),
                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
                 fontScale = 1.1,
@@ -200,7 +200,7 @@ def main():
 
             new_image_test = cv2.putText(
             img = img,
-            text = "OPTION 1 SELECTED",
+            text = "BALOON SELECTED",
             org = (150, 170),
             fontFace = cv2.FONT_HERSHEY_DUPLEX,
             fontScale = 1.1,
@@ -249,7 +249,7 @@ def main():
                     img = detector.findHands(img)
                     lmList, bbox = detector.findPosition(img)
                     if len(lmList) != 0:
-                        print(lmList[4])
+                        print(lmList[8])
 
                     cTime = time.time()
                     fps = 1 / (cTime - pTime)
@@ -282,10 +282,14 @@ def main():
 
                     cv2.waitKey(1)
 
-                    time.sleep(5)
+                    time.sleep(2)
                     
-                    x_cord = random.choice(range(1, 500))
-                    y_cord = random.choice(range(1, 500)) 
+                    x_cord = random.choice(range(1, 400))
+                    y_cord = random.choice(range(1, 300))
+                    lmList_8 = []
+                    lmList_8 = lmList[8]
+                    index_cords= []
+                    index_cords.append([4, x_cord, y_cord])
                     
                     while True:
                         success, img = cap.read()
@@ -300,8 +304,7 @@ def main():
                     
                         fingers = detector.fingersUp()
                         
-                        
-
+                    
                         new_image_5 = cv2.putText(                           
                             img = img,
                             text = "X",
@@ -311,18 +314,20 @@ def main():
                             color = (125, 246, 55),
                             thickness = 3
                         )
-                        
-                        if index_tip_x == x_cord and index_tip_y == y_cord:
-                            
-                            x_cord = random.choice(range(1, 500))
-                            y_cord = random.choice(range(1, 500)) 
+
+                        print(index_cords)
+                        if index_cords == lmList_8:
+                            print("match")
+                            time.sleep(1)
+                            x_cord = random.choice(range(0, 500))
+                            y_cord = random.choice(range(0, 500)) 
                             
                             while True:
                                 success, img = cap.read()
                                 img = detector.findHands(img)
                                 lmList, bbox = detector.findPosition(img)
                                 if len(lmList) != 0:
-                                    print(lmList[4])
+                                    print(lmList[8])
 
                                 cTime = time.time()
                                 fps = 1 / (cTime - pTime)
