@@ -249,7 +249,8 @@ def main():
                     img = detector.findHands(img)
                     lmList, bbox = detector.findPosition(img)
                     if len(lmList) != 0:
-                        print(lmList[8])
+                        x1, y1 = lmList[8][1:]
+                        print(x1, y1)
 
                     cTime = time.time()
                     fps = 1 / (cTime - pTime)
@@ -286,17 +287,18 @@ def main():
                     
                     x_cord = random.choice(range(1, 400))
                     y_cord = random.choice(range(1, 300))
-                    lmList_8 = []
-                    lmList_8 = lmList[8]
-                    index_cords= []
-                    index_cords.append([4, x_cord, y_cord])
+#                     lmList_8 = []
+#                     lmList_8 = lmList[8]
+#                     index_cords= []
+#                     index_cords.append([4, x_cord, y_cord])
                     
                     while True:
                         success, img = cap.read()
                         img = detector.findHands(img)
                         lmList, bbox = detector.findPosition(img)
                         if len(lmList) != 0:
-                            print(lmList[4])
+                            x1, y1 = lmList[8][1:]
+                            print(x1, y1)
 
                         cTime = time.time()
                         fps = 1 / (cTime - pTime)
@@ -314,14 +316,24 @@ def main():
                             color = (125, 246, 55),
                             thickness = 3
                         )
+                    
+                        cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
 
-                        print(index_cords)
-                        if index_cords == lmList_8:
+                        print(x_cord, y_cord)
+                        
+                        x_cord_range = x_cord + 30
+                        x_cord_rangen = x_cord - 30
+                        y_cord_range = y_cord + 30
+                        y_cord_rangen = y_cord - 30
+
+                        if ((x_cord_range >= x1 >= x_cord_rangen) and (y_cord_range >= y1 >= y_cord_rangen)):
+
+                            
                             print("match")
                             time.sleep(1)
-                            x_cord = random.choice(range(0, 500))
-                            y_cord = random.choice(range(0, 500)) 
-                            
+                            x_cord = random.choice(range(0, 400))
+                            y_cord = random.choice(range(0, 300)) 
+
                             while True:
                                 success, img = cap.read()
                                 img = detector.findHands(img)
@@ -335,7 +347,6 @@ def main():
                             
                                 fingers = detector.fingersUp()
                                 
-                                
 
                                 new_image_5 = cv2.putText(                           
                                     img = img,
@@ -346,6 +357,7 @@ def main():
                                     color = (125, 246, 55),
                                     thickness = 3
                                 )
+
                                 cv2.imshow("Image", img)
 
                                 cv2.waitKey(1)
