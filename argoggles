@@ -295,6 +295,13 @@ def main():
                     
                     score = 0
 
+                    t = time.localtime()
+                    current_time = time.strftime("%S", t)
+                    print(current_time)
+                    static_current_time = int(current_time)
+                    times_up = int(static_current_time) + 5
+                    print(str(times_up))
+                        
                     while True:
                         success, img = cap.read()
                         img = detector.findHands(img)
@@ -306,7 +313,11 @@ def main():
                         cTime = time.time()
                         fps = 1 / (cTime - pTime)
                         pTime = cTime                    
-                    
+                        
+                        t = time.localtime()
+                        current_time = time.strftime("%S", t)
+                        print(current_time)
+                        print(str(times_up))
                         fingers = detector.fingersUp()
                         
                     
@@ -321,8 +332,8 @@ def main():
                         )
                         new_image = cv2.putText(                           
                             img = img,
-                            text = str(score),
-                            org = (15, 25),
+                            text = "Score:" + str(score),
+                            org = (10, 30),
                             fontFace = cv2.FONT_HERSHEY_DUPLEX,
                             fontScale = 1.1,
                             color = (125, 246, 55),
@@ -346,9 +357,49 @@ def main():
                             print("match")
                             time.sleep(1)
                             x_cord = random.choice(range(0, 400))
-                            y_cord = random.choice(range(0, 300)) 
-                    
-                    
+                            y_cord = random.choice(range(0, 300))
+                            
+                        if int(current_time) > times_up:
+                            print("times up")
+                            
+                            while True:
+                                success, img = cap.read()
+                                img = detector.findHands(img)
+                                lmList, bbox = detector.findPosition(img)
+                                if len(lmList) != 0:
+                                    x1, y1 = lmList[8][1:]
+                                    print(x1, y1)
+
+                                cTime = time.time()
+                                fps = 1 / (cTime - pTime)
+                                pTime = cTime
+                            
+                                new_image = cv2.putText(                           
+                                    img = img,
+                                    text = "GAME OVER, FINALE SCORE:" + str(score),
+                                    org = (10, 50),
+                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
+                                    fontScale = 1.1,
+                                    color = (125, 246, 55),
+                                    thickness = 3
+                                )
+                                new_image = cv2.putText(                           
+                                    img = img,
+                                    text = "5) BACK TO MAIN MENU 2) TRY AGAIN",
+                                    org = (150, 250),
+                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
+                                    fontScale = 1.1,
+                                    color = (125, 246, 55),
+                                    thickness = 3
+                                )
+                            
+                                cv2.imshow("Image", img)
+
+                                cv2.waitKey(1)
+                                
+                            
+                        
+                        
                     
                         cv2.imshow("Image", img)
 
@@ -356,38 +407,38 @@ def main():
 
 
             
-        if selection2 == 1:
-            new_image_test = cv2.putText(
-            img = img,
-            text = "OPTION 2 SELECTED",
-            org = (150, 210),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.1,
-            color = (125, 246, 55),
-            thickness = 3
-            )
-            
-        if selection3 == 1:
-            new_image_test = cv2.putText(
-            img = img,
-            text = "OPTION 3 SELECTED",
-            org = (150, 230),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.1,
-            color = (125, 246, 55),
-            thickness = 3
-            )
-            
-        if selection4 == 1:
-            new_image_test = cv2.putText(
-            img = img,
-            text = "OPTION 4 SELECTED",
-            org = (150, 230),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.1,
-            color = (125, 246, 55),
-            thickness = 3
-            )
+#         if selection2 == 1:
+#             new_image_test = cv2.putText(
+#             img = img,
+#             text = "OPTION 2 SELECTED",
+#             org = (150, 210),
+#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#             fontScale = 1.1,
+#             color = (125, 246, 55),
+#             thickness = 3
+#             )
+#             
+#         if selection3 == 1:
+#             new_image_test = cv2.putText(
+#             img = img,
+#             text = "OPTION 3 SELECTED",
+#             org = (150, 230),
+#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#             fontScale = 1.1,
+#             color = (125, 246, 55),
+#             thickness = 3
+#             )
+#             
+#         if selection4 == 1:
+#             new_image_test = cv2.putText(
+#             img = img,
+#             text = "OPTION 4 SELECTED",
+#             org = (150, 230),
+#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#             fontScale = 1.1,
+#             color = (125, 246, 55),
+#             thickness = 3
+#             )
     
 
         cv2.imshow("Image", img)
