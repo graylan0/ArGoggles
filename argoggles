@@ -158,7 +158,7 @@ def main():
         
             new_image_2 = cv2.putText(
                 img = img,
-                text = "1.) BALOON GAME",
+                text = "1.) XGAMES MODE",
                 org = (40, 150),
                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
                 fontScale = 1.1,
@@ -200,7 +200,7 @@ def main():
 
             new_image_test = cv2.putText(
             img = img,
-            text = "BALOON SELECTED",
+            text = "XGAMES SELECTED",
             org = (150, 170),
             fontFace = cv2.FONT_HERSHEY_DUPLEX,
             fontScale = 1.1,
@@ -244,6 +244,7 @@ def main():
                     thickness = 3
                 )
                 
+                
                 while True:
                     success, img = cap.read()
                     img = detector.findHands(img)
@@ -261,7 +262,7 @@ def main():
                     
                     new_image = cv2.putText(
                         img = img,
-                        text = "BALOON GAME",
+                        text = "XGAMES MODE",
                         org = (226, 40),
                         fontFace = cv2.FONT_HERSHEY_DUPLEX,
                         fontScale = 1.0,
@@ -292,6 +293,8 @@ def main():
 #                     index_cords= []
 #                     index_cords.append([4, x_cord, y_cord])
                     
+                    score = 0
+
                     while True:
                         success, img = cap.read()
                         img = detector.findHands(img)
@@ -316,6 +319,15 @@ def main():
                             color = (125, 246, 55),
                             thickness = 3
                         )
+                        new_image = cv2.putText(                           
+                            img = img,
+                            text = str(score),
+                            org = (15, 25),
+                            fontFace = cv2.FONT_HERSHEY_DUPLEX,
+                            fontScale = 1.1,
+                            color = (125, 246, 55),
+                            thickness = 3
+                        )
                     
                         cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
 
@@ -325,47 +337,16 @@ def main():
                         x_cord_rangen = x_cord - 30
                         y_cord_range = y_cord + 30
                         y_cord_rangen = y_cord - 30
+                        
 
                         if ((x_cord_range >= x1 >= x_cord_rangen) and (y_cord_range >= y1 >= y_cord_rangen)):
 
+                            score = score + 1
                             
                             print("match")
                             time.sleep(1)
                             x_cord = random.choice(range(0, 400))
                             y_cord = random.choice(range(0, 300)) 
-
-                            while True:
-                                success, img = cap.read()
-                                img = detector.findHands(img)
-                                lmList, bbox = detector.findPosition(img)
-                                if len(lmList) != 0:
-                                    x1, y1 = lmList[8][1:]
-                                    print(x1, y1)
-
-                                cTime = time.time()
-                                fps = 1 / (cTime - pTime)
-                                pTime = cTime                    
-                            
-                                fingers = detector.fingersUp()
-                                
-                            
-                                new_image_5 = cv2.putText(                           
-                                    img = img,
-                                    text = "X",
-                                    org = (x_cord, y_cord),
-                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                                    fontScale = 1.1,
-                                    color = (125, 246, 55),
-                                    thickness = 3
-                                )
-                            
-                                cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
-
-
-                                cv2.imshow("Image", img)
-
-                                cv2.waitKey(1)
-                                
                     
                     
                     
@@ -418,5 +399,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
