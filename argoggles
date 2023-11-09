@@ -1,480 +1,204 @@
 import cv2
 import mediapipe as mp
-import time
-import math
-import numpy as np
+import threading
+import base64
+import requests
+import json
 import random
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.image import Image
+from kivy.graphics.texture import Texture
+from kivy.clock import Clock
+from kivy.uix.button import Button
+from kivy.uix.label import Label
 
-class handDetector():
-    def __init__(self, mode=False, maxHands=2, complexity=0, detectionCon=0.5, trackCon=0.5):
-        self.mode = mode
-        self.maxHands = maxHands
-        self.detectionCon = detectionCon
-        self.trackCon = trackCon
-        self.complexity = complexity
+openai.api_key = 'your-api-key'
+BUBBLE_POPPING_DISTANCE_THRESHOLD = 50
 
-        self.mpHands = mp.solutions.hands
-        self.hands = self.mpHands.Hands(self.mode, self.maxHands, self.complexity,
-        self.detectionCon, self.trackCon)
-        self.mpDraw = mp.solutions.drawing_utils
-        self.tipIds = [4, 8, 12, 16, 20]
+class ScoreKeeper:
+    def __init__(self):
+        self.score = 0
 
-    def findHands(self, img, draw=True):
+    def increment_score(self):
+        self.score += 1
+
+    def get_score(self):
+        return self.score
+
+class EncouragementAgent:
+    def get_encouragement(self):
+        phrases = [
+            "Great job!", "Keep going!", "You're doing fantastic!",
+            "Wow, nice pop!", "Keep the streak alive!"
+        ]
+        return random.choice(phrases)
+
+class NewPlayerAdvisor:
+    def get_advice(self):
+        advice = [
+            "Try to pop the bubbles with your hands!", "The red bubbles are worth more points!",
+            "Be quick, the bubbles will disappear!", "Use both hands to pop more bubbles!",
+            "Watch out for the special golden bubble!"
+        ]
+        return random.choice(advice)
+
+class BubbleGame:
+    def __init__(self, score_keeper):
+        self.bubbles = []
+        self.score_keeper = score_keeper
+
+    def create_bubble(self, color, position):
+        self.bubbles.append({'color': color, 'position': position, 'popped': False})
+
+    def pop_bubble(self, hand_positions):
+        for hand_position in hand_positions:
+            for bubble in self.bubbles:
+                if not bubble['popped'] and self.is_hand_near_bubble(hand_position, bubble['position']):
+                    bubble['popped'] = True
+                    self.score_keeper.increment_score()
+
+    def is_hand_near_bubble(self, hand_position, bubble_position):
+        distance = ((hand_position[0] - bubble_position[0]) ** 2 + (hand_position[1] - bubble_position[1]) ** 2) ** 0.5
+        return distance < BUBBLE_POPPING_DISTANCE_THRESHOLD
+
+class HandDetector:
+    def __init__(self):
+        self.cap = cv2.VideoCapture(0)
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands()
+        self.mp_draw = mp.solutions.drawing_utils
+        self.lock = threading.Lock()
+        self.frame = None
+        threading.Thread(target=self.run, daemon=True).start()
+
+    def run(self):
+        while True:
+            success, img = self.cap.read()
+            if success:
+                self.lock.acquire()
+                self.frame = img
+                self.lock.release()
+
+    def get_frame(self):
+        self.lock.acquire()
+        frame = self.frame
+        self.lock.release()
+        return frame
+
+    def find_hands(self, img):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(imgRGB)
-        # print(results.multi_hand_landmarks)
-        #self.results.multi_hand_landmarks = [1]
         if self.results.multi_hand_landmarks:
             for handLms in self.results.multi_hand_landmarks:
-                if draw:
-                    self.mpDraw.draw_landmarks(img, handLms,
-                    self.mpHands.HAND_CONNECTIONS)
-        # else:
-        #     pass
-
+                self.mp_draw.draw_landmarks(img, handLms, self.mp_hands.HAND_CONNECTIONS)
         return img
 
-    def findPosition(self, img, handNo=0, draw=True):
-        xList = []
-        yList = []
-        bbox = []
-        self.lmList = []
-        #self.results.multi_hand_landmarks = [1]
+    def get_hand_positions(self):
+        positions = []
         if self.results.multi_hand_landmarks:
-            myHand = self.results.multi_hand_landmarks[handNo]
-            for id, lm in enumerate(myHand.landmark):
-                # print(id, lm)
-                h, w, c = img.shape
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                xList.append(cx)
-                yList.append(cy)
-                # print(id, cx, cy)
-                self.lmList.append([id, cx, cy])
-                if draw:
-                    cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-        # else:
-        #     pass
+            for handLms in self.results.multi_hand_landmarks:
+                for id, lm in enumerate(handLms.landmark):
+                    h, w, c = self.frame.shape
+                    cx, cy = int(lm.x * w), int(lm.y * h)
+                    positions.append((cx, cy))
+        return positions
 
-            xmin, xmax = min(xList), max(xList)
-            ymin, ymax = min(yList), max(yList)
-            bbox = xmin, ymin, xmax, ymax
+    def close(self):
+        self.cap.release()
 
-            if draw:
-                cv2.rectangle(img, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20),
-                (0, 255, 0), 2)
+class KivyCamera(Image):
+    def __init__(self, capture, fps, **kwargs):
+        super(KivyCamera, self).__init__(**kwargs)
+        self.capture = capture
+        Clock.schedule_interval(self.update, 1.0 / fps)
 
-        return self.lmList, bbox
+    def update(self, dt):
+        frame = self.capture.get_frame()
+        if frame is not None:
+            frame = self.capture.find_hands(frame)
+            buf = cv2.flip(frame, 0).tostring()
+            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+            texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+            self.texture = texture
 
-    def fingersUp(self):
-        fingers = []
+class GameApp(App):
+    def build(self):
+        self.score_keeper = ScoreKeeper()
+        self.encouragement_agent = EncouragementAgent()
+        self.new_player_advisor = NewPlayerAdvisor()
+        self.game = BubbleGame(self.score_keeper)
+        self.detector = HandDetector()
+        self.img1 = KivyCamera(capture=self.detector, fps=30)
+        layout = BoxLayout(orientation='vertical')
+        layout.add_widget(self.img1)
+        self.score_label = Label(text=f"Score: {self.score_keeper.get_score()}")
+        layout.add_widget(self.score_label)
+        self.encouragement_label = Label(text="")
+        layout.add_widget(self.encouragement_label)
+        self.advice_label = Label(text="")
+        layout.add_widget(self.advice_label)
+        self.send_button = Button(text='Pop Bubble')
+        self.send_button.bind(on_press=self.on_enter)
+        layout.add_widget(self.send_button)
+        return layout
 
-        if any(self.lmList):
-            # Thumb
-            if self.lmList[self.tipIds[0]][1] > self.lmList[self.tipIds[0] - 1][1]:
-                fingers.append(1)
-            else:
-                fingers.append(0)
+    def on_enter(self, instance):
+        frame = self.detector.get_frame()
+        hand_positions = self.detector.get_hand_positions()
+        self.game.pop_bubble(hand_positions)
+        self.score_label.text = f"Score: {self.score_keeper.get_score()}"
+        self.encouragement_label.text = self.encouragement_agent.get_encouragement()
+        self.advice_label.text = self.new_player_advisor.get_advice()
+        encoded_image = self.encode_image_to_base64(frame)
+        self.send_images_to_gpt4([encoded_image])
 
-            # Fingers
-            for id in range(1, 5):
+    def encode_image_to_base64(self, frame):
+        _, buffer = cv2.imencode('.jpg', frame)
+        return base64.b64encode(buffer).decode('utf-8')
 
-                if self.lmList[self.tipIds[id]][2] < self.lmList[self.tipIds[id] - 2][2]:
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
-                    
-                totalFingers = fingers.count(1)
-               
-            return fingers
-        return [0, 0, 0, 0, 0]
-    
-
-
-  
-
-def main():
-    pTime = 0
-    cTime = 0
-    cap = cv2.VideoCapture(0)
-    detector = handDetector()
-    
-    selection = 0
-    selection1 = 0
-    selection2 = 0
-    selection3 = 0
-    selection4 = 0  
-    
-    while True:
-        success, img = cap.read()
-        img = detector.findHands(img)
-        lmList, bbox = detector.findPosition(img)
-        if len(lmList) != 0:
-            print(lmList[8])
-
-        cTime = time.time()
-        fps = 1 / (cTime - pTime)
-        pTime = cTime
-
-        #cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3,
-        #(255, 0, 255), 3)
-        
-        
-        fingers = detector.fingersUp()
-
-
-        if fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 0 and fingers[2] == 0 and fingers[4] == 0 and selection == 0:
-            selection1 = 1
-            selection = 1
-        #elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 0 and fingers[2] == 1 and fingers[4] == 0 and selection == 0:
-            #selection2 = 1
-            #selection = 1
-#         elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 0 and selection == 0:
-#             selection3 = 1
-#             selection = 1
-#         elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 1 and selection == 0:
-#             selection4 = 1
-#             selection = 1
-            
-        if selection1 == 0 and selection2 == 0 and selection3 == 0 and selection4 == 0: 
-            new_image = cv2.putText(
-            img = img,
-            text = "MAIN MENU",
-            org = (226, 40),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.0,
-            color = (125, 246, 55),
-            thickness = 3
+    def send_images_to_gpt4(self, base64_images):
+        headers = {
+            'Authorization': f'Bearer {openai.api_key}',
+            'Content-Type': 'application/json'
+        }
+        messages = [
+            {
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': 'Did the player pop a bubble in these images?'},
+                    {'type': 'text', 'text': 'Can you give some words of encouragement for the player based on these images?'},
+                    {'type': 'text', 'text': 'What advice would you give to a new player based on these images?'}
+                ]
+            }
+        ]
+        for base64_image in base64_images:
+            messages[0]['content'].append(
+                {'type': 'image_url', 'image_url': f'data:image/jpeg;base64,{base64_image}'}
             )
-        
-            new_image_1 = cv2.putText(
-                img = img,
-                text = "USE YOUR FINGERS TO SELECT AN OPTION",
-                org = (111, 70),
-                fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                fontScale = .6,
-                color = (125, 246, 55),
-                thickness = 2
-            )
-        
-            new_image_2 = cv2.putText(
-                img = img,
-                text = "1.) BALLOON GAME",
-                org = (40, 150),
-                fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                fontScale = 1.1,
-                color = (125, 246, 55),
-                thickness = 3
-            )
-            
-#             new_image_3 = cv2.putText(
-#                 img = img,
-#                 text = "2.) OPTION TWO",
-#                 org = (40, 210),
-#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#                 fontScale = 1.1,
-#                 color = (125, 246, 55),
-#                 thickness = 3
-#             )
-#         
-#             new_image_4 = cv2.putText(
-#                 img = img,
-#                 text = "3.) OPTION THREE",
-#                 org = (40, 270),
-#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#                 fontScale = 1.1,
-#                 color = (125, 246, 55),
-#                 thickness = 3
-#             )
-#             
-#             new_image_5 = cv2.putText(
-#                 img = img,
-#                 text = "4.) OPTION FOUR",
-#                 org = (40, 330),
-#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#                 fontScale = 1.1,
-#                 color = (125, 246, 55),
-#                 thickness = 3
-#             )
+        data = {
+            'model': 'gpt-4-vision-preview',
+            'messages': messages,
+            'max_tokens': 300
+        }
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        self.interpret_response(response.json())
 
-        if selection1 == 1:
+    def interpret_response(self, response):
+        text_response = response['choices'][0]['message']['content']
+        print(text_response)
 
-            new_image_test = cv2.putText(
-            img = img,
-            text = "BALLOON SELECTED",
-            org = (150, 170),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.1,
-            color = (125, 246, 55),
-            thickness = 3
-            )
-            
-            new_image_test = cv2.putText(
-            img = img,
-            text = "PLS CONFIRM USING FINGERS",
-            org = (140, 200),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 0.8,
-            color = (125, 246, 55),
-            thickness = 3
-            )
-            new_image_test = cv2.putText(
-            img = img,
-            text = "5)YES       0)NO",
-            org = (150, 250),
-            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-            fontScale = 1.1,
-            color = (125, 246, 55),
-            thickness = 3
-            )
-            if fingers[0] == 1 and fingers[1] == 0 and fingers[2] == 0 and fingers[3]== 0 and fingers[4] == 0:
-                selection = 0
-                selection1 = 0
-                selection2 = 0
-                selection3 = 0
-                selection4 = 0
-                cv2.destroyWindow("Image")
-            elif fingers[0] == 1 and fingers[1] == 1 and fingers[2] == 1 and fingers[3]== 1 and fingers[4] == 1:
-                new_image_5 = cv2.putText(
-                    img = img,
-                    text = "LOADING...",
-                    org = (40, 330),
-                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                    fontScale = 1.1,
-                    color = (125, 246, 55),
-                    thickness = 3
-                )
-                
-                
-                while True:
-                    success, img = cap.read()
-                    img = detector.findHands(img)
-                    lmList, bbox = detector.findPosition(img)
-                    if len(lmList) != 0:
-                        x1, y1 = lmList[8][1:]
-                        print(x1, y1)
+    def on_stop(self):
+        self.detector.close()
 
-                    cTime = time.time()
-                    fps = 1 / (cTime - pTime)
-                    pTime = cTime                    
-                    
-                    fingers = detector.fingersUp()
-                    
-                    
-                    new_image = cv2.putText(
-                        img = img,
-                        text = "BALLOON GAME",
-                        org = (226, 40),
-                        fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                        fontScale = 1.0,
-                        color = (125, 246, 55),
-                        thickness = 3
-                    )
-                    
-                    new_image_5 = cv2.putText(
-                        img = img,
-                        text = "LOADING...",
-                        org = (40, 330),
-                        fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                        fontScale = 1.1,
-                        color = (125, 246, 55),
-                        thickness = 3
-                    )
-                    
-                    cv2.imshow("Image", img)
+    def update(self, dt):
+        frame = self.detector.get_frame()
+        if frame is not None:
+            hand_positions = self.detector.get_hand_positions()
+            self.game.pop_bubble(hand_positions)
+            self.score_label.text = f"Score: {self.score_keeper.get_score()}"
 
-                    cv2.waitKey(1)
-
-                    time.sleep(2)
-                    
-                    x_cord = random.choice(range(1, 400))
-                    y_cord = random.choice(range(1, 300))
-#                     lmList_8 = []
-#                     lmList_8 = lmList[8]
-#                     index_cords= []
-#                     index_cords.append([4, x_cord, y_cord])
-                    
-                    score = 0
-
-                    t = time.localtime()
-                    current_time = time.strftime("%S", t)
-                    print(current_time)
-                    static_current_time = int(current_time)
-                    times_up = int(static_current_time) + 15
-                    print(str(times_up))
-
-                    
-                    
-                    while True:
-                        success, img = cap.read()
-                        img = detector.findHands(img)
-                        lmList, bbox = detector.findPosition(img)
-                        if len(lmList) != 0:
-                            x1, y1 = lmList[8][1:]
-                            print(x1, y1)
-
-                        cTime = time.time()
-                        fps = 1 / (cTime - pTime)
-                        pTime = cTime                    
-                        
-                        t = time.localtime()
-                        current_time = time.strftime("%S", t)
-                        count_down = times_up - int(current_time)
-                        
-                        print(str(count_down))
-                        print(current_time)
-                        print(str(times_up))
-
-                        fingers = detector.fingersUp()
-                        
-                    
-                        new_image_5 = cv2.putText(                           
-                            img = img,
-                            text = "X",
-                            org = (x_cord, y_cord),
-                            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                            fontScale = 1.1,
-                            color = (125, 246, 55),
-                            thickness = 3
-                        )
-                        new_image = cv2.putText(                           
-                            img = img,
-                            text = "Score:" + str(score),
-                            org = (10, 30),
-                            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                            fontScale = 1.1,
-                            color = (125, 246, 55),
-                            thickness = 3
-                        )
-                        new_image = cv2.putText(                           
-                            img = img,
-                            text = str(count_down),
-                            org = (590, 30),
-                            fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                            fontScale = 1.1,
-                            color = (125, 246, 55),
-                            thickness = 3
-                        )
-                    
-                        cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
-
-                        print(x_cord, y_cord)
-                        
-                        x_cord_range = x_cord + 30
-                        x_cord_rangen = x_cord - 30
-                        y_cord_range = y_cord + 30
-                        y_cord_rangen = y_cord - 30
-                        
-
-                        if ((x_cord_range >= x1 >= x_cord_rangen) and (y_cord_range >= y1 >= y_cord_rangen)):
-
-                            score = score + 1
-                            times_up = times_up + 5
-                            
-                            print("match")
-                            time.sleep(1)
-                            x_cord = random.choice(range(0, 400))
-                            y_cord = random.choice(range(0, 300))
-                            
-                        if int(current_time) > times_up:
-                            print("times up")
-                            
-                            while True:
-                                success, img = cap.read()
-                                img = detector.findHands(img)
-                                lmList, bbox = detector.findPosition(img)
-                                if len(lmList) != 0:
-                                    x1, y1 = lmList[8][1:]
-                                    print(x1, y1)
-
-                                cTime = time.time()
-                                fps = 1 / (cTime - pTime)
-                                pTime = cTime
-                            
-                                new_image = cv2.putText(                           
-                                    img = img,
-                                    text = "GAME OVER",
-                                    org = (220, 50),
-                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                                    fontScale = 1.1,
-                                    color = (125, 246, 55),
-                                    thickness = 3
-                                )
-                                new_image = cv2.putText(                           
-                                    img = img,
-                                    text = "FINALE SCORE:" + str(score),
-                                    org = (190, 120),
-                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                                    fontScale = 1.1,
-                                    color = (125, 246, 55),
-                                    thickness = 3
-                                )
-                                new_image = cv2.putText(                           
-                                    img = img,
-                                    text = "5) BACK TO MAIN MENU     2) TRY AGAIN",
-                                    org = (40, 250),
-                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                                    fontScale = 0.8,
-                                    color = (125, 246, 55),
-                                    thickness = 3
-                                )
-                                
-
-                                
-                            
-                                cv2.imshow("Image", img)
-
-                                cv2.waitKey(1)
-                                
-                            
-                        
-                        
-                    
-                        cv2.imshow("Image", img)
-
-                        cv2.waitKey(1)
-
-
-            
-#         if selection2 == 1:
-#             new_image_test = cv2.putText(
-#             img = img,
-#             text = "OPTION 2 SELECTED",
-#             org = (150, 210),
-#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#             fontScale = 1.1,
-#             color = (125, 246, 55),
-#             thickness = 3
-#             )
-#             
-#         if selection3 == 1:
-#             new_image_test = cv2.putText(
-#             img = img,
-#             text = "OPTION 3 SELECTED",
-#             org = (150, 230),
-#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#             fontScale = 1.1,
-#             color = (125, 246, 55),
-#             thickness = 3
-#             )
-#             
-#         if selection4 == 1:
-#             new_image_test = cv2.putText(
-#             img = img,
-#             text = "OPTION 4 SELECTED",
-#             org = (150, 230),
-#             fontFace = cv2.FONT_HERSHEY_DUPLEX,
-#             fontScale = 1.1,
-#             color = (125, 246, 55),
-#             thickness = 3
-#             )
-    
-
-        cv2.imshow("Image", img)
-
-        cv2.waitKey(1)
-        
-            
-            
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app = GameApp()
+    Clock.schedule_interval(app.update, 1.0 / 30.0)
+    app.run()
