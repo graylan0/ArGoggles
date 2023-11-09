@@ -128,12 +128,12 @@ def main():
         #elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 0 and fingers[2] == 1 and fingers[4] == 0 and selection == 0:
             #selection2 = 1
             #selection = 1
-        elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 0 and selection == 0:
-            selection3 = 1
-            selection = 1
-        elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 1 and selection == 0:
-            selection4 = 1
-            selection = 1
+#         elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 0 and selection == 0:
+#             selection3 = 1
+#             selection = 1
+#         elif fingers[1] == 1 and fingers[0] == 0 and fingers[3] == 1 and fingers[2] == 1 and fingers[4] == 1 and selection == 0:
+#             selection4 = 1
+#             selection = 1
             
         if selection1 == 0 and selection2 == 0 and selection3 == 0 and selection4 == 0: 
             new_image = cv2.putText(
@@ -166,35 +166,35 @@ def main():
                 thickness = 3
             )
             
-            new_image_3 = cv2.putText(
-                img = img,
-                text = "2.) OPTION TWO",
-                org = (40, 210),
-                fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                fontScale = 1.1,
-                color = (125, 246, 55),
-                thickness = 3
-            )
-        
-            new_image_4 = cv2.putText(
-                img = img,
-                text = "3.) OPTION THREE",
-                org = (40, 270),
-                fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                fontScale = 1.1,
-                color = (125, 246, 55),
-                thickness = 3
-            )
-            
-            new_image_5 = cv2.putText(
-                img = img,
-                text = "4.) OPTION FOUR",
-                org = (40, 330),
-                fontFace = cv2.FONT_HERSHEY_DUPLEX,
-                fontScale = 1.1,
-                color = (125, 246, 55),
-                thickness = 3
-            )
+#             new_image_3 = cv2.putText(
+#                 img = img,
+#                 text = "2.) OPTION TWO",
+#                 org = (40, 210),
+#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#                 fontScale = 1.1,
+#                 color = (125, 246, 55),
+#                 thickness = 3
+#             )
+#         
+#             new_image_4 = cv2.putText(
+#                 img = img,
+#                 text = "3.) OPTION THREE",
+#                 org = (40, 270),
+#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#                 fontScale = 1.1,
+#                 color = (125, 246, 55),
+#                 thickness = 3
+#             )
+#             
+#             new_image_5 = cv2.putText(
+#                 img = img,
+#                 text = "4.) OPTION FOUR",
+#                 org = (40, 330),
+#                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
+#                 fontScale = 1.1,
+#                 color = (125, 246, 55),
+#                 thickness = 3
+#             )
 
         if selection1 == 1:
 
@@ -262,7 +262,7 @@ def main():
                     
                     new_image = cv2.putText(
                         img = img,
-                        text = "XGAMES MODE",
+                        text = "BALLOON GAME",
                         org = (226, 40),
                         fontFace = cv2.FONT_HERSHEY_DUPLEX,
                         fontScale = 1.0,
@@ -376,8 +376,8 @@ def main():
                             
                                 new_image = cv2.putText(                           
                                     img = img,
-                                    text = "GAME OVER, FINALE SCORE:" + str(score),
-                                    org = (10, 50),
+                                    text = "GAME OVER",
+                                    org = (220, 50),
                                     fontFace = cv2.FONT_HERSHEY_DUPLEX,
                                     fontScale = 1.1,
                                     color = (125, 246, 55),
@@ -385,13 +385,25 @@ def main():
                                 )
                                 new_image = cv2.putText(                           
                                     img = img,
-                                    text = "5) BACK TO MAIN MENU 2) TRY AGAIN",
-                                    org = (150, 250),
+                                    text = "FINALE SCORE:" + str(score),
+                                    org = (190, 120),
                                     fontFace = cv2.FONT_HERSHEY_DUPLEX,
                                     fontScale = 1.1,
                                     color = (125, 246, 55),
                                     thickness = 3
                                 )
+                                new_image = cv2.putText(                           
+                                    img = img,
+                                    text = "5) BACK TO MAIN MENU     2) TRY AGAIN",
+                                    org = (40, 250),
+                                    fontFace = cv2.FONT_HERSHEY_DUPLEX,
+                                    fontScale = 0.8,
+                                    color = (125, 246, 55),
+                                    thickness = 3
+                                )
+                                
+
+                                
                             
                                 cv2.imshow("Image", img)
 
