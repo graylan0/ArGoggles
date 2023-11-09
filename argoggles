@@ -158,7 +158,7 @@ def main():
         
             new_image_2 = cv2.putText(
                 img = img,
-                text = "1.) XGAMES MODE",
+                text = "1.) BALLOON GAME",
                 org = (40, 150),
                 fontFace = cv2.FONT_HERSHEY_DUPLEX,
                 fontScale = 1.1,
@@ -200,7 +200,7 @@ def main():
 
             new_image_test = cv2.putText(
             img = img,
-            text = "XGAMES SELECTED",
+            text = "BALLOON SELECTED",
             org = (150, 170),
             fontFace = cv2.FONT_HERSHEY_DUPLEX,
             fontScale = 1.1,
@@ -299,9 +299,11 @@ def main():
                     current_time = time.strftime("%S", t)
                     print(current_time)
                     static_current_time = int(current_time)
-                    times_up = int(static_current_time) + 5
+                    times_up = int(static_current_time) + 15
                     print(str(times_up))
-                        
+
+                    
+                    
                     while True:
                         success, img = cap.read()
                         img = detector.findHands(img)
@@ -316,8 +318,12 @@ def main():
                         
                         t = time.localtime()
                         current_time = time.strftime("%S", t)
+                        count_down = times_up - int(current_time)
+                        
+                        print(str(count_down))
                         print(current_time)
                         print(str(times_up))
+
                         fingers = detector.fingersUp()
                         
                     
@@ -339,6 +345,15 @@ def main():
                             color = (125, 246, 55),
                             thickness = 3
                         )
+                        new_image = cv2.putText(                           
+                            img = img,
+                            text = str(count_down),
+                            org = (590, 30),
+                            fontFace = cv2.FONT_HERSHEY_DUPLEX,
+                            fontScale = 1.1,
+                            color = (125, 246, 55),
+                            thickness = 3
+                        )
                     
                         cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
 
@@ -353,6 +368,7 @@ def main():
                         if ((x_cord_range >= x1 >= x_cord_rangen) and (y_cord_range >= y1 >= y_cord_rangen)):
 
                             score = score + 1
+                            times_up = times_up + 5
                             
                             print("match")
                             time.sleep(1)
